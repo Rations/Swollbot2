@@ -2,16 +2,15 @@
 #include <Adafruit_MotorShield.h>
 #include "utility/Adafruit_MS_PWMServoDriver.h"
 
-const int REFRESH         = 10;   // Loop update rate.
-
-// Stick pins.
-const int VACUUM_PIN = 2;
-const int X     = A0;
-const int Y     = A1;
-const int UP    = 1;
-const int RIGHT = 2;
-const int DOWN  = 3;
-const int LEFT  = 4;
+const int REFRESH     = 10;
+const int DEBUG_PIN   = 0; 
+const int VACUUM_PIN  = 2;
+const int X           = A0;
+const int Y           = A1;
+const int UP          = 1;
+const int RIGHT       = 2;
+const int DOWN        = 3;
+const int LEFT        = 4;
 
 const int STICK_DEADZONE  = 51;
 const int STICK_ZERO      = 512; 
@@ -20,11 +19,15 @@ const int STICK_ZERO      = 512;
 Adafruit_MotorShield motorShield  = Adafruit_MotorShield();
 Adafruit_DCMotor *vacuum          = motorShield.getMotor(4);
 int VACUUM_DEADZONE = 200;                                     // Prevents unintended switching when button is depressed for up to t = VACUUM_DEADZONE ms. 
-int vacuumState     = HIGH;                                       // Allows vacuum to be switched on and off alternatingly. 
+int vacuumState     = HIGH;                                       // Allows vacuum to be switched on and off alternatingly.
+int debugState      = HIGH;
 long lastTime       = 0;                                              // Stores last time vacuum switch (R2) was depressed.
+long lastTime2      = 0; 
 
 void setup() {
   motorShield.begin();
+  pinMode(VACUUM_PIN, INPUT);
+  pinMode(DEBUG_PIN, INPUT);
   pinMode(X, INPUT);
   pinMode(Y, INPUT);
   pinMode(UP, OUTPUT);
@@ -35,12 +38,38 @@ void setup() {
 }
 
 void loop() {
+  Serial.begin(9600);
+  debug();
   // Read stick inputs.
   int x = stickPos(X);
   int y = stickPos(Y);
   identifyInput(x, y);
   button();
   delay(REFRESH);
+}
+
+void debug() {
+  long currentTime = millis();
+  if (digitalRead(DEBUG_PIN) == LOW && currentTime - lastTime2 > VACUUM_DEADZONE) {
+    if (debugState == LOW) {
+      controlJamming(0, 0, 0, 0);
+      debugState = HIGH;
+      Serial.println("Setting controlJamming(0, 0, 0, 0).");
+      Serial.println(digitalRead(UP));
+      Serial.println(digitalRead(RIGHT));
+      Serial.println(digitalRead(LEFT));
+      Serial.println(digitalRead(DOWN));
+    } else {
+      controlJamming(1, 1, 1, 1);
+      debugState = LOW;
+      Serial.println("Setting controlJamming(1, 1, 1, 1).");
+      Serial.println(digitalRead(UP));
+      Serial.println(digitalRead(RIGHT));
+      Serial.println(digitalRead(LEFT));
+      Serial.println(digitalRead(DOWN));
+    }
+    lastTime2 = millis();
+  }
 }
 
 int stickPos(int axis) {
@@ -114,4 +143,3 @@ void button() {
     lastTime = millis();
   }
 }
-
