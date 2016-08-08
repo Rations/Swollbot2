@@ -18,11 +18,11 @@ const int STICK_ZERO      = 512;
 // Declare motor shield objects.
 Adafruit_MotorShield motorShield  = Adafruit_MotorShield();
 Adafruit_DCMotor *vacuum          = motorShield.getMotor(4);
-int VACUUM_DEADZONE = 200;                                     // Prevents unintended switching when button is depressed for up to t = VACUUM_DEADZONE ms. 
+int BUTTON_DEADZONE = 300;                                     // Prevents unintended switching when button is depressed for up to t = BUTTON_DEADZONE ms. 
 int vacuumState     = HIGH;                                       // Allows vacuum to be switched on and off alternatingly.
 int debugState      = HIGH;
-long lastTime       = 0;                                              // Stores last time vacuum switch (R2) was depressed.
-long lastTime2      = 0; 
+long lastTimeVacuum       = 0;                                              // Stores last time vacuum switch (R2) was depressed.
+long lastTimeDebug      = 0; 
 
 void setup() {
   motorShield.begin();
@@ -44,13 +44,13 @@ void loop() {
   int x = stickPos(X);
   int y = stickPos(Y);
   identifyInput(x, y);
-  button();
+  vacuumButton();
   delay(REFRESH);
 }
 
 void debug() {
-  long currentTime = millis();
-  if (digitalRead(DEBUG_PIN) == LOW && currentTime - lastTime2 > VACUUM_DEADZONE) {
+  long now = millis();
+  if (digitalRead(DEBUG_PIN) == LOW && now - lastTimeDebug > BUTTON_DEADZONE) {
     if (debugState == LOW) {
       controlJamming(0, 0, 0, 0);
       debugState = HIGH;
@@ -68,7 +68,7 @@ void debug() {
       Serial.println(digitalRead(LEFT));
       Serial.println(digitalRead(DOWN));
     }
-    lastTime2 = millis();
+    lastTimeDebug = millis();
   }
 }
 
@@ -127,11 +127,10 @@ void jam(int state, int pin) {
   }
 }
 
-// Read vacuum button. If vacuum button is depressed and at least t = VACUUM_DEADZONE ms has elapsed since last depression, switch vacuum on/off as necessary.
-void button() {
-  long currentTime = millis();
-  int vacuumButtonState = digitalRead(VACUUM_PIN);
-  if (vacuumButtonState == LOW && currentTime - lastTime > VACUUM_DEADZONE) {
+// Read vacuum button. If vacuum button is depressed and at least t = BUTTON_DEADZONE ms has elapsed since last depression, switch vacuum on/off as necessary.
+void vacuumButton() {
+  long now = millis();
+  if (digitalRead(VACUUM_PIN) == LOW && now - lastTimeVacuum > BUTTON_DEADZONE) {
     if (vacuumState == LOW) {
       vacuum -> run(FORWARD);                 
       vacuum -> setSpeed(255);
@@ -140,6 +139,6 @@ void button() {
       vacuum -> run(RELEASE);
       vacuumState = LOW;
     }
-    lastTime = millis();
+    lastTimeVacuum = millis();
   }
 }
