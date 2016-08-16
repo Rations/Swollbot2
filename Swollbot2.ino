@@ -3,14 +3,15 @@
 #include "utility/Adafruit_MS_PWMServoDriver.h"
 
 const int REFRESH     = 10;
-const int DEBUG_PIN   = 0; 
 const int VACUUM_PIN  = 2;
+const int MASTER_JAM  = 3;
 const int X           = A0;
 const int Y           = A1;
-const int UP          = 1;
-const int RIGHT       = 2;
-const int DOWN        = 3;
-const int LEFT        = 4;
+const int AIR         = 13;
+const int UP          = 12;
+const int RIGHT       = 11;
+const int DOWN        = 10;
+const int LEFT        = 9;
 
 const int STICK_DEADZONE  = 51;
 const int STICK_ZERO      = 512; 
@@ -18,16 +19,16 @@ const int STICK_ZERO      = 512;
 // Declare motor shield objects.
 Adafruit_MotorShield motorShield  = Adafruit_MotorShield();
 Adafruit_DCMotor *vacuum          = motorShield.getMotor(4);
-int BUTTON_DEADZONE = 300;                                     // Prevents unintended switching when button is depressed for up to t = BUTTON_DEADZONE ms. 
+int BUTTON_DEADZONE = 200;                                     // Prevents unintended switching when button is depressed for up to t = BUTTON_DEADZONE ms. 
 int vacuumState     = HIGH;                                       // Allows vacuum to be switched on and off alternatingly.
-int debugState      = HIGH;
-long lastTimeVacuum       = 0;                                              // Stores last time vacuum switch (R2) was depressed.
-long lastTimeDebug      = 0; 
+long lastTimeVacuum     = 0;                                              // Stores last time vacuum switch (R2) was depressed.
 
 void setup() {
+  Serial.begin(9600);
   motorShield.begin();
+  pinMode(MASTER_JAM, INPUT);
   pinMode(VACUUM_PIN, INPUT);
-  pinMode(DEBUG_PIN, INPUT);
+  pinMode(AIR, OUTPUT);
   pinMode(X, INPUT);
   pinMode(Y, INPUT);
   pinMode(UP, OUTPUT);
@@ -38,38 +39,15 @@ void setup() {
 }
 
 void loop() {
-  Serial.begin(9600);
-  debug();
   // Read stick inputs.
   int x = stickPos(X);
   int y = stickPos(Y);
   identifyInput(x, y);
   vacuumButton();
+  masterJam();
+  Serial.println(digitalRead(VACUUM_PIN));
+  // Serial.println(vacuumState);
   delay(REFRESH);
-}
-
-void debug() {
-  long now = millis();
-  if (digitalRead(DEBUG_PIN) == LOW && now - lastTimeDebug > BUTTON_DEADZONE) {
-    if (debugState == LOW) {
-      controlJamming(0, 0, 0, 0);
-      debugState = HIGH;
-      Serial.println("Setting controlJamming(0, 0, 0, 0).");
-      Serial.println(digitalRead(UP));
-      Serial.println(digitalRead(RIGHT));
-      Serial.println(digitalRead(LEFT));
-      Serial.println(digitalRead(DOWN));
-    } else {
-      controlJamming(1, 1, 1, 1);
-      debugState = LOW;
-      Serial.println("Setting controlJamming(1, 1, 1, 1).");
-      Serial.println(digitalRead(UP));
-      Serial.println(digitalRead(RIGHT));
-      Serial.println(digitalRead(LEFT));
-      Serial.println(digitalRead(DOWN));
-    }
-    lastTimeDebug = millis();
-  }
 }
 
 int stickPos(int axis) {
@@ -113,10 +91,10 @@ void identifyInput(int x, int y) {
 }
 
 void controlJamming(int up, int right, int down, int left) {
-    jam(up, 1);
-    jam(right, 2);
-    jam(down, 3);
-    jam(left, 4);
+    jam(up, UP);
+    jam(right, RIGHT);
+    jam(down, DOWN);
+    jam(left, LEFT);
 }
  
 void jam(int state, int pin) {
@@ -139,6 +117,11 @@ void vacuumButton() {
       vacuum -> run(RELEASE);
       vacuumState = LOW;
     }
-    lastTimeVacuum = millis();
+  }
+}
+
+void masterJam() {
+  if (digitalRead(MASTER_JAM) == LOW) {
+      controlJamming(1, 1, 1, 1);
   }
 }
