@@ -14,17 +14,20 @@ const int DOWN        = 10;
 const int LEFT        = 9;
 
 const int STICK_DEADZONE  = 51;
-const int STICK_ZERO      = 512; 
+const int STICK_ZERO      = 512;
 
 // Declare motor shield objects.
 Adafruit_MotorShield motorShield  = Adafruit_MotorShield();
 Adafruit_DCMotor *vacuum          = motorShield.getMotor(4);
-int BUTTON_DEADZONE = 200;                                     // Prevents unintended switching when button is depressed for up to t = BUTTON_DEADZONE ms. 
-int vacuumState     = HIGH;                                       // Allows vacuum to be switched on and off alternatingly.
-long lastTimeVacuum     = 0;                                              // Stores last time vacuum switch (R2) was depressed.
+Adafruit_DCMotor *vacuum2         = motorShield.getMotor(3);
+int BUTTON_DEADZONE  = 200;        // Prevents unintended switching when button is depressed for up to t = BUTTON_DEADZONE ms.
+int vacuumState      = HIGH;       // Allows vacuum to be switched on and off alternatingly.
+int vacuum2State     = HIGH;       // Allows vacuum2 to be switched on and off alternatingly.
+long lastTimeVacuum  = 0;          // Stores last time vacuum switch (R2) was depressed.
+long lastTimeVacuum2 = 0;          // Stores last time vacuum switch (R2) was depressed.
+
 
 void setup() {
-  Serial.begin(9600);
   motorShield.begin();
   pinMode(MASTER_JAM, INPUT);
   pinMode(VACUUM_PIN, INPUT);
@@ -35,7 +38,8 @@ void setup() {
   pinMode(RIGHT, OUTPUT);
   pinMode(DOWN, OUTPUT);
   pinMode(LEFT, OUTPUT);
-  vacuum -> run(RELEASE);
+  vacuum  -> run(RELEASE);
+  vacuum2 -> run(RELEASE);
 }
 
 void loop() {
@@ -44,9 +48,8 @@ void loop() {
   int y = stickPos(Y);
   identifyInput(x, y);
   vacuumButton();
-  masterJam();
-  Serial.println(digitalRead(VACUUM_PIN));
-  // Serial.println(vacuumState);
+  vacuum2Button();
+//  masterJam();
   delay(REFRESH);
 }
 
@@ -91,12 +94,12 @@ void identifyInput(int x, int y) {
 }
 
 void controlJamming(int up, int right, int down, int left) {
-    jam(up, UP);
-    jam(right, RIGHT);
-    jam(down, DOWN);
-    jam(left, LEFT);
+  jam(up, UP);
+  jam(right, RIGHT);
+  jam(down, DOWN);
+  jam(left, LEFT);
 }
- 
+
 void jam(int state, int pin) {
   if (state == 1) {
     digitalWrite(pin, HIGH);
@@ -110,7 +113,7 @@ void vacuumButton() {
   long now = millis();
   if (digitalRead(VACUUM_PIN) == LOW && now - lastTimeVacuum > BUTTON_DEADZONE) {
     if (vacuumState == LOW) {
-      vacuum -> run(FORWARD);                 
+      vacuum -> run(FORWARD);
       vacuum -> setSpeed(255);
       vacuumState = HIGH;
     } else {
@@ -120,8 +123,22 @@ void vacuumButton() {
   }
 }
 
-void masterJam() {
-  if (digitalRead(MASTER_JAM) == LOW) {
-      controlJamming(1, 1, 1, 1);
+void vacuum2Button() {
+  long now = millis();
+  if (digitalRead(MASTER_JAM) == LOW && now - lastTimeVacuum2 > BUTTON_DEADZONE) {
+    if (vacuum2State == LOW) {
+      vacuum2 -> run(FORWARD);
+      vacuum2 -> setSpeed(255);
+      vacuum2State = HIGH;
+    } else {
+      vacuum2 -> run(RELEASE);
+      vacuum2State = LOW;
+    }
   }
 }
+
+//void masterJam() {
+//  if (digitalRead(MASTER_JAM) == LOW) {
+//      controlJamming(1, 1, 1, 1);
+//  }
+//}
