@@ -2,54 +2,53 @@
 #include <Adafruit_MotorShield.h>
 #include "utility/Adafruit_MS_PWMServoDriver.h"
 
-const int REFRESH     = 10;
-const int VACUUM_PIN  = 2;
-const int MASTER_JAM  = 3;
-const int X           = A0;
-const int Y           = A1;
-const int AIR         = 13;
-const int UP          = 12;
-const int RIGHT       = 11;
-const int DOWN        = 10;
-const int LEFT        = 9;
+const int REFRESH        = 10;    // Loop refresh rate
+const int BUTTON_REFRESH = 200;   // Prevents unintended switching when button is depressed for up to t = BUTTON_REFRESH ms.
+const int STICK_DEADZONE = 51;
+const int STICK_ZERO     = 512;
 
-const int STICK_DEADZONE  = 51;
-const int STICK_ZERO      = 512;
+// Assign Arduino pins to stick axes and buttons.
+const int L_STICK = 2;     // Left-hand stick button
+const int R_STICK = 3;     // Right-hand stick button
+const int X       = A0;    // Center stick horizontal axis
+const int Y       = A1;    // Center stick vertical axis
+const int RX      = A2;    // Right-hand stick horizontal axis
+const int RY      = A3;    // Right-hand stick vertical axis
+const int AIR     = 13;
+const int UP      = 12;
+const int RIGHT   = 11;
+const int DOWN    = 10;
+const int LEFT    = 9;
 
 // Declare motor shield objects.
 Adafruit_MotorShield motorShield  = Adafruit_MotorShield();
 Adafruit_DCMotor *vacuum          = motorShield.getMotor(4);
-Adafruit_DCMotor *vacuum2         = motorShield.getMotor(3);
-int BUTTON_DEADZONE  = 200;        // Prevents unintended switching when button is depressed for up to t = BUTTON_DEADZONE ms.
-int vacuumState      = HIGH;       // Allows vacuum to be switched on and off alternatingly.
-int vacuum2State     = HIGH;       // Allows vacuum2 to be switched on and off alternatingly.
-long lastTimeVacuum  = 0;          // Stores last time vacuum switch (R2) was depressed.
-long lastTimeVacuum2 = 0;          // Stores last time vacuum switch (R2) was depressed.
 
+int vacuumState     = HIGH;     // Represents operating state of vacuum.
+long lastTimeVacuum = 0;        // Stores last time vacuum was switched.
 
 void setup() {
   motorShield.begin();
-  pinMode(MASTER_JAM, INPUT);
-  pinMode(VACUUM_PIN, INPUT);
-  pinMode(AIR, OUTPUT);
+  pinMode(L_STICK, INPUT);
+  pinMode(R_STICK, INPUT);
   pinMode(X, INPUT);
   pinMode(Y, INPUT);
+  pinMode(AIR, OUTPUT);
   pinMode(UP, OUTPUT);
   pinMode(RIGHT, OUTPUT);
   pinMode(DOWN, OUTPUT);
   pinMode(LEFT, OUTPUT);
-  vacuum  -> run(RELEASE);
-  vacuum2 -> run(RELEASE);
+  vacuum -> run(RELEASE);
 }
 
 void loop() {
-  // Read stick inputs.
-  int x = stickPos(X);
-  int y = stickPos(Y);
+  int x  = stickPos(X);
+  int y  = stickPos(Y);
+  int rx = stickPos(RX);
+  int ry = stickPos(RY);
   identifyInput(x, y);
-  vacuumButton();
-  vacuum2Button();
-//  masterJam();
+  vacuumButton(L_STICK);
+  piston(rx, ry);
   delay(REFRESH);
 }
 
@@ -108,10 +107,10 @@ void jam(int state, int pin) {
   }
 }
 
-// Read vacuum button. If vacuum button is depressed and at least t = BUTTON_DEADZONE ms has elapsed since last depression, switch vacuum on/off as necessary.
-void vacuumButton() {
+// Read vacuum button. If vacuum button is depressed and at least t = BUTTON_REFRESH ms has elapsed since last depression, switch vacuum on/off as necessary.
+void vacuumButton(int pin) {
   long now = millis();
-  if (digitalRead(VACUUM_PIN) == LOW && now - lastTimeVacuum > BUTTON_DEADZONE) {
+  if (digitalRead(pin) == LOW && now - lastTimeVacuum > BUTTON_REFRESH) {
     if (vacuumState == LOW) {
       vacuum -> run(FORWARD);
       vacuum -> setSpeed(255);
@@ -123,22 +122,13 @@ void vacuumButton() {
   }
 }
 
-void vacuum2Button() {
-  long now = millis();
-  if (digitalRead(MASTER_JAM) == LOW && now - lastTimeVacuum2 > BUTTON_DEADZONE) {
-    if (vacuum2State == LOW) {
-      vacuum2 -> run(FORWARD);
-      vacuum2 -> setSpeed(255);
-      vacuum2State = HIGH;
-    } else {
-      vacuum2 -> run(RELEASE);
-      vacuum2State = LOW;
-    }
+void piston(int rx, int ry) {
+  if (ry == -1) {
+    digitalWrite(AIR, HIGH);
+  } else if (ry == 1) {
+    digitalWrite(AIR, LOW);
+  }
+  if (rx != 0) {
+    controlJamming(1, 1, 1, 1);
   }
 }
-
-//void masterJam() {
-//  if (digitalRead(MASTER_JAM) == LOW) {
-//      controlJamming(1, 1, 1, 1);
-//  }
-//}
