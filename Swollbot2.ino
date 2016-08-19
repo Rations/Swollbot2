@@ -107,7 +107,7 @@ void jam(int state, int pin) {
   }
 }
 
-// Read vacuum button. If vacuum button is depressed and at least t = BUTTON_REFRESH ms has elapsed since last depression, switch vacuum on/off as necessary.
+// Read vacuum button. If button is depressed and at least t = BUTTON_REFRESH ms has elapsed since last depression, switch vacuum on/off as necessary.
 void vacuumButton(int pin) {
   long now = millis();
   if (digitalRead(pin) == LOW && now - lastTimeVacuum > BUTTON_REFRESH) {
@@ -122,13 +122,14 @@ void vacuumButton(int pin) {
   }
 }
 
-void piston(int rx, int ry) {
-  if (ry == -1) {
+// Extend (retract) piston given upwards (downwards) stick input. Jam all cells given any horizontal stick input. 
+void piston(int x, int y) {
+  if (y == -1) {
     digitalWrite(AIR, HIGH);
-  } else if (ry == 1) {
+  } else if (y == 1) {
     digitalWrite(AIR, LOW);
   }
-  if (rx != 0) {
+  if (x != 0) {
     controlJamming(1, 1, 1, 1);
   }
 }
